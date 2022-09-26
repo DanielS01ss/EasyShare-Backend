@@ -1,36 +1,35 @@
-import { Application } from 'express';
-import express from 'express';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import express, { Application } from 'express';
 
 class App {
-    public app:Application;
-    public port:number;
+  public app: Application;
 
-    constructor(appInit:{port:number, controllers:any, middleWares:any})
-    {
-        this.app = express();
-        this.port = appInit.port;
-        this.middlewares(appInit.middleWares);
-        this.routes(appInit.controllers);
-    }
+  public port: number;
 
-    public listen()
-    {
-        this.app.listen(this.port,()=>{
-            console.log(`App has started on port ${this.port}`)
-        })
-    }
+  constructor(appInit: { port: number; controllers: Array<any>; middleWares: Array<any> }) {
+    this.app = express();
+    this.port = appInit.port;
+    this.middlewares(appInit.middleWares);
+    this.routes(appInit.controllers);
+  }
 
-    private middlewares(middleWares:any){
-        middleWares.forEach((middleware: any) => {
-            this.app.use(middleware);
-        });
-    }
+  public listen(): void {
+    this.app.listen(this.port, () => {
+      console.log(`App has started on port ${this.port}`);
+    });
+  }
 
-    private routes(controllers:any){
-        controllers.forEach((controller:any) => {
-            this.app.use(controller.path, controller.router);
-        })
-    }
+  private middlewares(middleWares: any): void {
+    middleWares.forEach((middleware: any) => {
+      this.app.use(middleware);
+    });
+  }
+
+  private routes(controllers: any): void {
+    controllers.forEach((controller: any) => {
+      this.app.use(controller.path, controller.router);
+    });
+  }
 }
 
 export default App;

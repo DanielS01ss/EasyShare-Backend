@@ -5,9 +5,12 @@
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended"
+    "plugin:@typescript-eslint/recommended",
+    "airbnb-base",
+    "airbnb-typescript/base"
   ],
   "rules": {
+    "linebreak-style": ["error", "windows"],
     "no-var": "error",
     "semi": "error",
     "indent": ["error", 2, { "SwitchCase": 1 }],
@@ -15,6 +18,7 @@
     "space-in-parens": "error",
     "no-multiple-empty-lines": "error",
     "prefer-const": "error",
+    "class-methods-use-this": "off",
     "@typescript-eslint/explicit-function-return-type": "error",
     "@typescript-eslint/no-explicit-any": "error",
     "no-unused-vars": [
@@ -25,5 +29,8 @@
         "caughtErrors": "none"
       }
     ]
+  },
+  "parserOptions": {
+    "project": "./tsconfig.json"
   }
 }

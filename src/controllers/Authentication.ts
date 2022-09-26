@@ -2,20 +2,22 @@ import express, { Request, Response } from 'express';
 
 import Joi from 'joi';
 import JoiPassCheck from 'joi-password-complexity';
+import { RequestFuncType } from '../types/RequestFuncReturnType';
 
 class Authentication {
   public path = '/auth';
+
   public router = express.Router();
 
   constructor() {
     this.initRoutes();
   }
 
-  private initRoutes() {
+  private initRoutes(): void {
     this.router.post('/signup', this.signUp);
   }
 
-  async signUp(req: Request, resp: Response) {
+  async signUp(req: Request, resp: Response): RequestFuncType {
     const validationSchema = Joi.object({
       username: Joi.string().min(1).required(),
       email: Joi.string().min(3).email(),
@@ -43,7 +45,7 @@ class Authentication {
     if (passValidationRes.error) {
       return resp.sendStatus(400);
     }
-    resp.sendStatus(200);
+    return resp.sendStatus(200);
   }
 }
 

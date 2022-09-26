@@ -2,6 +2,7 @@ import bodyParser from 'body-parser';
 import App from './app';
 import Authentication from './controllers/Authentication';
 import HomeController from './controllers/HomeController';
+import MongoConnection from './database/MongoConnection';
 
 const app = new App({
   port: 5000,
@@ -10,3 +11,4 @@ const app = new App({
 });
 
 app.listen();
+MongoConnection.getInstance().startConnection();

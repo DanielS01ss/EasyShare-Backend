@@ -1,23 +1,21 @@
-import express, {Request, Response} from 'express';
+import express, { Request, Response } from 'express';
 
 class HomeController {
-    public path='/'
-    public router = express.Router()
+  public path = '/';
 
-    constructor()
-    {
-        this.initRoutes();
-    }
+  public router = express.Router();
 
-    private initRoutes()
-    {
-        this.router.get('/',this.home);
-    }
+  constructor() {
+    this.initRoutes();
+  }
 
-    home(req:Request, resp:Response)
-    {
-        resp.send("success");
-    }
+  private initRoutes(): void {
+    this.router.get('/', this.home);
+  }
+
+  home(req: Request, resp: Response): void {
+    resp.send('success');
+  }
 }
 
-export default HomeController; 
+export default HomeController;

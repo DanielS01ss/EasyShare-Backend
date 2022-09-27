@@ -1,3 +1,4 @@
+/* eslint-disable max-len */
 import express, { Request, Response } from 'express';
 import JoiPassCheck from 'joi-password-complexity';
 import Joi from 'joi';
@@ -8,6 +9,7 @@ import { RequestFuncType } from '../types/RequestFuncReturnType';
 import User from '../models/User';
 import { User as UserType } from '../types/User';
 import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } from '../utils/envConstants';
+import { UserTypeResponse } from '../types/UserTypeResponse';
 
 class Authentication {
   public path = '/auth';
@@ -145,7 +147,8 @@ class Authentication {
     }
 
     try {
-      const user: UserType | null = await User.findOne({ email: req.body.email });
+      // eslint-disable-next-line no-underscore-dangle
+      const user: UserType | null = ((await User.findOne({ email: req.body.email })) as UserTypeResponse)._doc;
       if (user && user.password) {
         const validPassword = await bcrypt.compare(req.body.password, user.password);
 
@@ -154,7 +157,7 @@ class Authentication {
         }
         const { password, ...filteredUser } = user;
         const loggedUser = {
-          usr: filteredUser,
+          user: filteredUser,
         };
         const signed = jwt.sign(loggedUser, ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
         const refreshTk = jwt.sign(loggedUser, REFRESH_TOKEN_SECRET);

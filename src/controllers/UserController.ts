@@ -18,6 +18,7 @@ class UserController {
 
   private initRoutes(): void {
     this.router.patch('/', this.modifyUser);
+    this.router.delete('/', this.deleteUser);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
@@ -83,6 +84,37 @@ class UserController {
 
     if (!req.body.email && !req.body.username && !req.body.password) {
       return resp.sendStatus(400);
+    }
+    return resp.sendStatus(200);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async deleteUser(req: any, resp: Response): RequestFuncType {
+    if (req.headers.authorization) {
+      const retrievedJWT: string | undefined = extractJwt(req.headers.authorization);
+      let decodedJWT: string | JwtPayload | null;
+      let userData: UserDecodedJWT;
+      try {
+        if (retrievedJWT) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          decodedJWT = jwt.decode(retrievedJWT);
+          userData = decodedJWT as UserDecodedJWT;
+          // eslint-disable-next-line no-underscore-dangle
+          // eslint-disable-next-line max-len, no-underscore-dangle
+          const foundUser: IUser | undefined = (await User.find({ id: userData.user.id })) as IUser;
+          if (!foundUser) {
+            return resp.sendStatus(404);
+          }
+          try {
+            await User.deleteOne({ id: userData.user.id });
+          } catch (err) {
+            console.log(err);
+            return resp.sendStatus(500);
+          }
+        }
+      } catch (err) {
+        resp.sendStatus(500);
+      }
     }
     return resp.sendStatus(200);
   }

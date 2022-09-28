@@ -11,7 +11,14 @@ const UserSchema = new mongoose.Schema<IUser>({
     max: 50,
     min: 5,
   },
-  documents: [{ documentId: String }],
+  documents: [
+    {
+      documentId: String,
+      name: String,
+      size: String,
+      docType: String,
+    },
+  ],
 });
 
 const User: mongoose.Model<IUser> = mongoose.model<IUser>('User', UserSchema);

@@ -5,7 +5,7 @@ const DocumentSchema = new mongoose.Schema({
   name: String,
   size: Number,
   type: String,
-  file: { data: Buffer, contentType: String },
+  file: String,
 });
 
 const Document: mongoose.Model<DocumentType> = mongoose.model<DocumentType>('Document', DocumentSchema);

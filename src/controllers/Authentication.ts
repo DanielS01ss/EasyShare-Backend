@@ -159,7 +159,7 @@ class Authentication {
         const loggedUser = {
           user: filteredUser,
         };
-        const signed = jwt.sign(loggedUser, ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
+        const signed = jwt.sign(loggedUser, ACCESS_TOKEN_SECRET, { expiresIn: '2s' });
         const refreshTk = jwt.sign(loggedUser, REFRESH_TOKEN_SECRET);
 
         return resp.status(200).json({

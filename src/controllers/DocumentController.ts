@@ -100,7 +100,13 @@ class DocumentController {
       if (foundUser) {
         try {
           // eslint-disable-next-line no-underscore-dangle, max-len
-          await User.updateOne({ id: userId }, { $push: { documents: docToSave } });
+          try {
+            // eslint-disable-next-line no-underscore-dangle, max-len
+            await User.updateOne({ id: userId }, { $push: { documents: docToSave } });
+          } catch (err) {
+            console.log(err);
+            return resp.sendStatus(500);
+          }
         } catch (err) {
           console.log(err);
           return resp.sendStatus(500);

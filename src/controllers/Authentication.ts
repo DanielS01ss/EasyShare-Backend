@@ -123,6 +123,7 @@ class Authentication {
         email: req.body.email,
         password: hashedPassword,
         documents: [],
+        links: [],
       });
 
       await newUser.save();

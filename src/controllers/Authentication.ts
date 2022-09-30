@@ -10,6 +10,8 @@ import User from '../models/User';
 import { User as UserType } from '../types/User';
 import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } from '../utils/envConstants';
 import { UserTypeResponse } from '../types/UserTypeResponse';
+import RefreshTokens from '../models/RefreshTokens';
+import { DecodedJWT } from '../types/DecodedJWT';
 
 class Authentication {
   public path = '/auth';
@@ -23,6 +25,7 @@ class Authentication {
   private initRoutes(): void {
     this.router.post('/signup', this.signUp);
     this.router.post('/login', this.login);
+    this.router.post('/token', this.token);
   }
 
   async googleAuth(req: Request, resp: Response): RequestFuncType {
@@ -160,8 +163,18 @@ class Authentication {
         const loggedUser = {
           user: filteredUser,
         };
-        const signed = jwt.sign(loggedUser, ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
+        const signed = jwt.sign(loggedUser, ACCESS_TOKEN_SECRET, { expiresIn: '15s' });
         const refreshTk = jwt.sign(loggedUser, REFRESH_TOKEN_SECRET);
+
+        try {
+          const newRefreshToken = new RefreshTokens({
+            token: refreshTk,
+          });
+          await newRefreshToken.save();
+        } catch (err) {
+          console.log(err);
+          return resp.sendStatus(500);
+        }
 
         return resp.status(200).json({
           token: signed,
@@ -173,6 +186,46 @@ class Authentication {
       console.log(err);
       return resp.sendStatus(500);
     }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async token(req: any, resp: Response): RequestFuncType {
+    const validationSchema = Joi.object({
+      refreshToken: Joi.string().required().min(1),
+      token: Joi.string().required().min(1),
+    });
+
+    try {
+      await validationSchema.validateAsync(req.body);
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    try {
+      const foundToken = await RefreshTokens.find({ token: req.body.refreshToken });
+      if (!foundToken) return resp.sendStatus(403);
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    // eslint-disable-next-line prefer-destructuring
+    const token: string = req.body.token;
+    const decodedToken: DecodedJWT = jwt.decode(token) as DecodedJWT;
+    const userId = decodedToken.user.id;
+    let foundUser;
+    try {
+      foundUser = await User.findOne({ id: userId });
+      if (!foundUser) return resp.sendStatus(404);
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    const newToken = jwt.sign(decodedToken.user, ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
+
+    return resp.status(200).json(newToken);
   }
 }
 

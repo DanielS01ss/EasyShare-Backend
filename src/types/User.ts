@@ -7,4 +7,5 @@ export type User = {
   email: string;
   password: string;
   documents: Array<string>;
+  isUserConfirmed: boolean;
 };

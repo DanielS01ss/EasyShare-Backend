@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema<IUser>({
     max: 50,
     min: 5,
   },
+  isUserConfirmed: Boolean,
   documents: [
     {
       documentId: String,

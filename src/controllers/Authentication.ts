@@ -5,13 +5,16 @@ import Joi from 'joi';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { RequestFuncType } from '../types/RequestFuncReturnType';
 import User from '../models/User';
 import { User as UserType } from '../types/User';
-import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } from '../utils/envConstants';
+import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, DOMAIN_NAME } from '../utils/envConstants';
 import { UserTypeResponse } from '../types/UserTypeResponse';
 import RefreshTokens from '../models/RefreshTokens';
 import { DecodedJWT } from '../types/DecodedJWT';
+import sendMail from '../utils/sendMail';
+import CodeModel from '../models/Code';
 
 class Authentication {
   public path = '/auth';
@@ -26,6 +29,50 @@ class Authentication {
     this.router.post('/signup', this.signUp);
     this.router.post('/login', this.login);
     this.router.post('/token', this.token);
+    this.router.post('/code', this.code);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async code(req: any, resp: Response): RequestFuncType {
+    const validationSchema = Joi.object({
+      code: Joi.string().required().min(1),
+    });
+
+    try {
+      await validationSchema.validateAsync(req.body);
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    let foundUser;
+    let foundCode;
+    try {
+      foundCode = await CodeModel.findOne({ code: req.body.code });
+      if (!foundCode) return resp.sendStatus(404);
+      foundUser = await User.findOne({ _id: foundCode.userId });
+      if (!foundUser) return resp.sendStatus(404);
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    foundUser.isUserConfirmed = true;
+    try {
+      await foundUser.save();
+    } catch (err) {
+      console.log(err);
+      resp.sendStatus(500);
+    }
+
+    try {
+      await CodeModel.deleteOne({ code: req.body.code });
+    } catch (err) {
+      console.log(err);
+      resp.sendStatus(500);
+    }
+
+    return resp.sendStatus(200);
   }
 
   async googleAuth(req: Request, resp: Response): RequestFuncType {
@@ -65,6 +112,7 @@ class Authentication {
         email: req.body.email,
         password: '',
         documents: [],
+        isUserConfirmed: true,
       });
 
       await newUser.save();
@@ -127,9 +175,22 @@ class Authentication {
         password: hashedPassword,
         documents: [],
         links: [],
+        isUserConfirmed: false,
       });
 
       await newUser.save();
+      const newCode: string = crypto.randomBytes(128).toString('hex');
+      const newValidationCode = new CodeModel({
+        // eslint-disable-next-line no-underscore-dangle
+        userId: newUser._id,
+        code: newCode,
+      });
+      await sendMail(
+        req.body.email,
+        `To confirm your email please click on this link ${DOMAIN_NAME}${newCode}`,
+        'Account verification',
+      );
+      await newValidationCode.save();
       return resp.status(200).json('User was succesfully created!!!');
     } catch (err) {
       console.log(err);
@@ -163,7 +224,12 @@ class Authentication {
         const loggedUser = {
           user: filteredUser,
         };
-        const signed = jwt.sign(loggedUser, ACCESS_TOKEN_SECRET, { expiresIn: '15s' });
+
+        if (!user.isUserConfirmed) {
+          return resp.sendStatus(403);
+        }
+
+        const signed = jwt.sign(loggedUser, ACCESS_TOKEN_SECRET, { expiresIn: '15m' });
         const refreshTk = jwt.sign(loggedUser, REFRESH_TOKEN_SECRET);
 
         try {
@@ -214,18 +280,24 @@ class Authentication {
     const token: string = req.body.token;
     const decodedToken: DecodedJWT = jwt.decode(token) as DecodedJWT;
     const userId = decodedToken.user.id;
-    let foundUser;
+    let foundUser: UserType | null;
     try {
-      foundUser = await User.findOne({ id: userId });
+      // eslint-disable-next-line no-underscore-dangle
+      foundUser = ((await User.findOne({ id: userId })) as UserTypeResponse)._doc;
       if (!foundUser) return resp.sendStatus(404);
     } catch (err) {
       console.log(err);
       return resp.sendStatus(500);
     }
 
-    const newToken = jwt.sign(decodedToken.user, ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
+    const { password, ...filteredUser } = foundUser;
+    const loggedUser = {
+      user: filteredUser,
+    };
 
-    return resp.status(200).json(newToken);
+    const newToken = jwt.sign(loggedUser, ACCESS_TOKEN_SECRET, { expiresIn: '2h' });
+
+    return resp.status(200).json({ token: newToken });
   }
 }
 

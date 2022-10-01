@@ -46,7 +46,7 @@ class UserController {
         userData = decodedJWT as UserDecodedJWT;
         // eslint-disable-next-line no-underscore-dangle
         // eslint-disable-next-line max-len, no-underscore-dangle
-        const foundUser: IUser | undefined = (await User.find({ id: userData.user.id })) as IUser;
+        const foundUser: IUser | undefined = (await User.findOne({ id: userData.user.id })) as IUser;
         if (foundUser) {
           if (req.body.username) {
             try {
@@ -101,7 +101,7 @@ class UserController {
           userData = decodedJWT as UserDecodedJWT;
           // eslint-disable-next-line no-underscore-dangle
           // eslint-disable-next-line max-len, no-underscore-dangle
-          const foundUser: IUser | undefined = (await User.find({ id: userData.user.id })) as IUser;
+          const foundUser: IUser | undefined = (await User.findOne({ id: userData.user.id })) as IUser;
           if (!foundUser) {
             return resp.sendStatus(404);
           }

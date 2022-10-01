@@ -382,7 +382,7 @@ class Authentication {
     }
 
     try {
-      const foundToken = await RefreshTokens.find({ token: req.body.refreshToken });
+      const foundToken = await RefreshTokens.findOne({ token: req.body.refreshToken });
       if (!foundToken) return resp.sendStatus(403);
     } catch (err) {
       console.log(err);

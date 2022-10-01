@@ -13,8 +13,10 @@ import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET, DOMAIN_NAME } from '../utils
 import { UserTypeResponse } from '../types/UserTypeResponse';
 import RefreshTokens from '../models/RefreshTokens';
 import { DecodedJWT } from '../types/DecodedJWT';
+import { ResetLink as ResetLinkType } from '../types/ResetLink';
 import sendMail from '../utils/sendMail';
 import CodeModel from '../models/Code';
+import ResetLink from '../models/ResetLink';
 
 class Authentication {
   public path = '/auth';
@@ -30,6 +32,117 @@ class Authentication {
     this.router.post('/login', this.login);
     this.router.post('/token', this.token);
     this.router.post('/code', this.code);
+    this.router.post('/reset-link', this.resetLink);
+    this.router.post('/reset-password-using-link', this.resetPasswordUsingLink);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async resetPasswordUsingLink(req: any, resp: Response): RequestFuncType {
+    const validationSchema = Joi.object({
+      password: Joi.string().min(8).required(),
+      resetLink: Joi.string().min(1).required(),
+    });
+
+    let resetLinkData: ResetLinkType | null = null;
+    try {
+      resetLinkData = (await ResetLink.findOne({ resetLink: req.body.resetLink })) as unknown as ResetLinkType;
+    } catch (err) {
+      console.log(err);
+      resp.sendStatus(500);
+    }
+
+    try {
+      await validationSchema.validateAsync(req.body);
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    const passwordStrengthParameters = {
+      min: 8,
+      max: 30,
+      lowerCase: 1,
+      upperCase: 1,
+      numeric: 1,
+      symbol: 1,
+      requirementCount: 2,
+    };
+
+    const passValidationRes = JoiPassCheck(passwordStrengthParameters).validate(req.body.password);
+    if (passValidationRes.error) {
+      return resp.sendStatus(400);
+    }
+
+    let foundUser;
+
+    try {
+      if (resetLinkData) foundUser = await User.findOne({ email: resetLinkData.userEmail });
+      if (!foundUser) resp.sendStatus(404);
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+    try {
+      if (resetLinkData) await User.updateOne({ email: resetLinkData.userEmail }, { password: hashedPassword });
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+    return resp.sendStatus(200);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async resetLink(req: any, resp: Response): RequestFuncType {
+    const validationSchema = Joi.object({
+      email: Joi.string().min(3).email(),
+    });
+
+    try {
+      await validationSchema.validateAsync(req.body);
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    let foundUser;
+    try {
+      foundUser = await User.find({ email: req.body.email });
+      if (foundUser.length === 0) return resp.sendStatus(404);
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    const linkString: string = crypto.randomBytes(12).toString('hex');
+
+    const newUserLink = new ResetLink({
+      resetLink: linkString,
+      userEmail: req.body.email,
+    });
+
+    try {
+      await newUserLink.save();
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    try {
+      await sendMail(
+        req.body.email,
+        `You reset link is ${DOMAIN_NAME}/forgot-password/${linkString}`,
+        'Email validation',
+      );
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+
+    return resp.sendStatus(200);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -187,7 +300,7 @@ class Authentication {
       });
       await sendMail(
         req.body.email,
-        `To confirm your email please click on this link ${DOMAIN_NAME}${newCode}`,
+        `To confirm your email please click on this link ${DOMAIN_NAME}/validation/${newCode}`,
         'Account verification',
       );
       await newValidationCode.save();
@@ -300,5 +413,4 @@ class Authentication {
     return resp.status(200).json({ token: newToken });
   }
 }
-
 export default Authentication;

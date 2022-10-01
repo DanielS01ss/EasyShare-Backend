@@ -12,6 +12,7 @@ import { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } from '../utils/envConstants
 import { UserTypeResponse } from '../types/UserTypeResponse';
 import RefreshTokens from '../models/RefreshTokens';
 import { DecodedJWT } from '../types/DecodedJWT';
+import sendMail from '../utils/sendMail';
 
 class Authentication {
   public path = '/auth';
@@ -26,6 +27,18 @@ class Authentication {
     this.router.post('/signup', this.signUp);
     this.router.post('/login', this.login);
     this.router.post('/token', this.token);
+    this.router.post('/test', this.testRoute);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async testRoute(req: any, resp: Response): RequestFuncType {
+    try {
+      await sendMail();
+    } catch (err) {
+      console.log(err);
+      return resp.sendStatus(500);
+    }
+    return resp.sendStatus(200);
   }
 
   async googleAuth(req: Request, resp: Response): RequestFuncType {

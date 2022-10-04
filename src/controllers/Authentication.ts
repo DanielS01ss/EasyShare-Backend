@@ -34,6 +34,7 @@ class Authentication {
     this.router.post('/code', this.code);
     this.router.post('/reset-link', this.resetLink);
     this.router.post('/reset-password-using-link', this.resetPasswordUsingLink);
+    this.router.post('/google-auth', this.googleAuth);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,9 +191,8 @@ class Authentication {
 
   async googleAuth(req: Request, resp: Response): RequestFuncType {
     const validationSchema = Joi.object({
-      username: Joi.string().min(2).required(),
-      email: Joi.string().min(3).email(),
-      password: Joi.string().min(8),
+      id: Joi.string().required(),
+      email: Joi.string().email(),
     });
 
     try {
@@ -317,16 +317,17 @@ class Authentication {
       email: Joi.string().min(3).email(),
       password: Joi.string().min(8),
     });
-
     try {
       await validationSchema.validateAsync(req.body);
     } catch (err) {
-      resp.status(400);
+      return resp.status(400).json('Request is not valid');
     }
 
     try {
+      const response = (await User.findOne({ email: req.body.email })) as UserTypeResponse;
+      if (response === null) return resp.sendStatus(404);
       // eslint-disable-next-line no-underscore-dangle
-      const user: UserType | null = ((await User.findOne({ email: req.body.email })) as UserTypeResponse)._doc;
+      const user: UserType | null = response._doc;
       if (user && user.password) {
         const validPassword = await bcrypt.compare(req.body.password, user.password);
 
